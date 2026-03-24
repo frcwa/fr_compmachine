@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Compensation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg:        #0d0f12;
+            --surface:   #13161b;
+            --surface2:  #1a1e25;
+            --border:    #242830;
+            --border2:   #2e3440;
+            --accent:    #4f8ef7;
+            --accent2:   #3a6fd8;
+            --success:   #3ecf8e;
+            --danger:    #f75555;
+            --warning:   #f7a534;
+            --text:      #e8ecf4;
+            --text2:     #8892a4;
+            --text3:     #555e6e;
+            --glow:      rgba(79, 142, 247, 0.15);
+        }
+
+        html, body {
+            width: 100vw; height: 100vh;
+            background: transparent;
+            font-family: 'Syne', sans-serif;
+            color: var(--text);
+            overflow: hidden;
+            user-select: none;
+        }
+
+        #overlay {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(4px);
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+        #overlay.visible {
+            opacity: 1; pointer-events: all;
+        }
+
+        .panel {
+            width: 480px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            box-shadow: 0 0 0 1px rgba(255,255,255,0.03), 0 24px 60px rgba(0,0,0,0.6), 0 0 80px var(--glow);
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            transform: translateY(12px) scale(0.97);
+            transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1), opacity 0.2s ease;
+            opacity: 0;
+        }
+        .panel.active {
+            display: flex;
+        }
+        #overlay.visible .panel.active {
+            transform: translateY(0) scale(1);
+            opacity: 1;
+        }
+
+        .panel-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 18px 20px 16px;
+            border-bottom: 1px solid var(--border);
+            background: linear-gradient(135deg, var(--surface2) 0%, var(--surface) 100%);
+        }
+        .panel-title {
+            display: flex; align-items: center; gap: 10px;
+        }
+        .panel-icon {
+            width: 32px; height: 32px;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 13px;
+            box-shadow: 0 4px 12px rgba(79,142,247,0.3);
+        }
+        .panel-title h2 {
+            font-size: 15px; font-weight: 700;
+            letter-spacing: 0.01em;
+            color: var(--text);
+        }
+        .panel-title span {
+            font-size: 11px; font-weight: 400;
+            color: var(--text3);
+            font-family: 'DM Mono', monospace;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+        .close-btn {
+            width: 28px; height: 28px;
+            background: var(--border);
+            border: none; border-radius: 6px;
+            color: var(--text2); cursor: pointer;
+            font-size: 12px;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.15s, color 0.15s;
+        }
+        .close-btn:hover { background: var(--danger); color: #fff; }
+
+        .panel-body {
+            padding: 20px;
+            display: flex; flex-direction: column; gap: 14px;
+        }
+
+        .field { display: flex; flex-direction: column; gap: 6px; }
+        .field label {
+            font-size: 11px; font-weight: 600;
+            color: var(--text2);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            font-family: 'DM Mono', monospace;
+        }
+        .field input {
+            background: var(--bg);
+            border: 1px solid var(--border2);
+            border-radius: 8px;
+            padding: 10px 14px;
+            color: var(--text);
+            font-family: 'DM Mono', monospace;
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.15s, box-shadow 0.15s;
+            width: 100%;
+        }
+        .field input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(79,142,247,0.12);
+        }
+        .field input::placeholder { color: var(--text3); }
+
+        .field-row { display: grid; grid-template-columns: 1fr 120px; gap: 10px; }
+
+        .btn {
+            border: none; border-radius: 8px;
+            padding: 11px 18px;
+            font-family: 'Syne', sans-serif;
+            font-size: 13px; font-weight: 600;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 7px;
+            transition: filter 0.15s, transform 0.1s;
+            letter-spacing: 0.02em;
+        }
+        .btn:active { transform: scale(0.97); }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            color: #fff;
+            box-shadow: 0 4px 14px rgba(79,142,247,0.25);
+        }
+        .btn-primary:hover { filter: brightness(1.1); }
+        .btn-success {
+            background: linear-gradient(135deg, var(--success), #2daa74);
+            color: #fff;
+            box-shadow: 0 4px 14px rgba(62,207,142,0.25);
+        }
+        .btn-success:hover { filter: brightness(1.1); }
+        .btn-danger {
+            background: linear-gradient(135deg, var(--danger), #d43f3f);
+            color: #fff;
+        }
+        .btn-danger:hover { filter: brightness(1.1); }
+        .btn-ghost {
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            color: var(--text2);
+        }
+        .btn-ghost:hover { color: var(--text); border-color: var(--text3); }
+        .btn-full { width: 100%; }
+        .btn-sm { padding: 7px 12px; font-size: 12px; border-radius: 6px; }
+
+        .items-header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        .items-header span {
+            font-size: 11px; font-weight: 600;
+            color: var(--text2);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            font-family: 'DM Mono', monospace;
+        }
+        .item-count {
+            background: var(--accent);
+            color: #fff;
+            font-size: 10px; font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 20px;
+            font-family: 'DM Mono', monospace;
+        }
+
+        .items-list {
+            display: flex; flex-direction: column; gap: 6px;
+            max-height: 200px; overflow-y: auto;
+            padding-right: 4px;
+        }
+        .items-list::-webkit-scrollbar { width: 4px; }
+        .items-list::-webkit-scrollbar-track { background: transparent; }
+        .items-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+
+        .item-row {
+            display: flex; align-items: center; justify-content: space-between;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 9px 12px;
+            animation: slideIn 0.2s ease;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-6px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .item-row-left {
+            display: flex; align-items: center; gap: 10px;
+        }
+        .item-dot {
+            width: 6px; height: 6px;
+            background: var(--accent);
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .item-name {
+            font-size: 13px; font-weight: 600;
+            color: var(--text);
+            font-family: 'DM Mono', monospace;
+        }
+        .item-amount {
+            font-size: 12px;
+            color: var(--text2);
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            padding: 2px 8px; border-radius: 4px;
+            font-family: 'DM Mono', monospace;
+        }
+        .item-remove {
+            background: none; border: none;
+            color: var(--text3); cursor: pointer;
+            font-size: 11px; padding: 4px;
+            border-radius: 4px;
+            transition: color 0.15s, background 0.15s;
+        }
+        .item-remove:hover { color: var(--danger); background: rgba(247,85,85,0.1); }
+
+        .empty-state {
+            text-align: center; padding: 24px;
+            color: var(--text3);
+            font-size: 12px;
+            font-family: 'DM Mono', monospace;
+            border: 1px dashed var(--border2);
+            border-radius: 8px;
+        }
+        .empty-state i { display: block; font-size: 20px; margin-bottom: 8px; opacity: 0.4; }
+
+        .divider {
+            height: 1px;
+            background: var(--border);
+            margin: 2px 0;
+        }
+
+        .action-row {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+        }
+
+        .code-display {
+            text-align: center;
+            padding: 16px;
+            background: var(--bg);
+            border: 1px solid var(--border2);
+            border-radius: 8px;
+        }
+        .code-display .code-label {
+            font-size: 10px;
+            color: var(--text3);
+            font-family: 'DM Mono', monospace;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 6px;
+        }
+        .code-display .code-value {
+            font-size: 22px;
+            font-weight: 800;
+            font-family: 'DM Mono', monospace;
+            color: var(--accent);
+            letter-spacing: 0.15em;
+        }
+
+        #toast {
+            position: fixed;
+            bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            border-radius: 8px;
+            padding: 10px 18px;
+            font-size: 13px; font-weight: 600;
+            display: flex; align-items: center; gap: 8px;
+            opacity: 0;
+            transition: opacity 0.2s, transform 0.2s;
+            pointer-events: none;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            z-index: 999;
+        }
+        #toast.show {
+            opacity: 1; transform: translateX(-50%) translateY(0);
+        }
+        #toast.success { border-color: var(--success); color: var(--success); }
+        #toast.error   { border-color: var(--danger);  color: var(--danger);  }
+        #toast.info    { border-color: var(--accent);  color: var(--accent);  }
+    </style>
+</head>
+<body>
+
+<div id="overlay">
+
+    <div class="panel" id="panel-admin">
+        <div class="panel-header">
+            <div class="panel-title">
+                <div class="panel-icon"><i class="fas fa-box-open"></i></div>
+                <div>
+                    <h2>Compensation</h2>
+                    <span>Admin Panel</span>
+                </div>
+            </div>
+            <button class="close-btn" onclick="closeUI()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="panel-body">
+
+            <div>
+                <div class="field-row">
+                    <div class="field">
+                        <label>Item Name</label>
+                        <input id="admin-item-name" type="text" placeholder="e.g. water" autocomplete="off" />
+                    </div>
+                    <div class="field">
+                        <label>Amount</label>
+                        <input id="admin-item-amount" type="number" placeholder="1" min="1" autocomplete="off" />
+                    </div>
+                </div>
+                <div style="margin-top:10px;">
+                    <button class="btn btn-primary btn-full" onclick="addItem()">
+                        <i class="fas fa-plus"></i> Add Item
+                    </button>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div>
+                <div class="items-header">
+                    <span>Items</span>
+                    <span class="item-count" id="admin-count">0</span>
+                </div>
+                <div class="items-list" id="admin-items-list">
+                    <div class="empty-state" id="admin-empty">
+                        <i class="fas fa-inbox"></i>
+                        No items added yet
+                    </div>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="action-row">
+                <button class="btn btn-ghost" onclick="clearItems()">
+                    <i class="fas fa-trash"></i> Clear All
+                </button>
+                <button class="btn btn-success" onclick="submitComp()">
+                    <i class="fas fa-paper-plane"></i> Submit & Get Code
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="panel" id="panel-redeem">
+        <div class="panel-header">
+            <div class="panel-title">
+                <div class="panel-icon" style="background: linear-gradient(135deg, var(--success), #2daa74); box-shadow: 0 4px 12px rgba(62,207,142,0.3);">
+                    <i class="fas fa-ticket"></i>
+                </div>
+                <div>
+                    <h2>Redeem Compensation</h2>
+                    <span>Enter your code below</span>
+                </div>
+            </div>
+            <button class="close-btn" onclick="closeUI()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="panel-body">
+
+            <div class="field">
+                <label>Compensation Code</label>
+                <input id="redeem-code" type="text" placeholder="XXXXXXXXXX" maxlength="10"
+                    autocomplete="off" style="text-transform:uppercase; letter-spacing:0.15em; font-size:16px; text-align:center;" />
+            </div>
+
+            <button class="btn btn-success btn-full" onclick="redeemCode()" style="margin-top:4px;">
+                <i class="fas fa-check-circle"></i> Redeem Code
+            </button>
+
+            <button class="btn btn-ghost btn-full" onclick="closeUI()">
+                <i class="fas fa-times"></i> Cancel
+            </button>
+
+        </div>
+    </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+    let currentPanel = null
+    let items = []
+    let isClosing = false
+
+    function openPanel(panel) {
+        isClosing = false
+        currentPanel = panel
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'))
+        document.getElementById('panel-' + panel).classList.add('active')
+        const overlay = document.getElementById('overlay')
+        overlay.classList.add('visible')
+        if (panel === 'admin') {
+            renderItems()
+            setTimeout(() => document.getElementById('admin-item-name').focus(), 250)
+        } else if (panel === 'redeem') {
+            setTimeout(() => document.getElementById('redeem-code').focus(), 250)
+        }
+    }
+
+    function closeUI() {
+        if (isClosing) return
+        isClosing = true
+        document.getElementById('overlay').classList.remove('visible')
+        setTimeout(() => {
+            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'))
+            currentPanel = null
+            fetch(`https://${resourceName}/closeUI`, {
+                method: 'POST', body: JSON.stringify({})
+            }).catch(() => {})
+        }, 200)
+    }
+
+    function renderItems() {
+        const list = document.getElementById('admin-items-list')
+        const empty = document.getElementById('admin-empty')
+        const count = document.getElementById('admin-count')
+        count.textContent = items.length
+
+        list.querySelectorAll('.item-row').forEach(el => el.remove())
+
+        if (items.length === 0) {
+            empty.style.display = ''
+        } else {
+            empty.style.display = 'none'
+            items.forEach((item, i) => {
+                const row = document.createElement('div')
+                row.className = 'item-row'
+                row.innerHTML = `
+                    <div class="item-row-left">
+                        <div class="item-dot"></div>
+                        <span class="item-name">${escHtml(item.item)}</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <span class="item-amount">x${item.amount}</span>
+                        <button class="item-remove" onclick="removeItem(${i})" title="Remove">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>`
+                list.appendChild(row)
+            })
+        }
+    }
+
+    function addItem() {
+        const nameEl   = document.getElementById('admin-item-name')
+        const amountEl = document.getElementById('admin-item-amount')
+        const name   = nameEl.value.trim()
+        const amount = parseInt(amountEl.value)
+
+        if (!name) { showToast('Enter an item name', 'error'); nameEl.focus(); return }
+        if (!amount || amount < 1) { showToast('Enter a valid amount', 'error'); amountEl.focus(); return }
+
+        items.push({ item: name, amount: amount })
+        nameEl.value = ''
+        amountEl.value = ''
+        nameEl.focus()
+        renderItems()
+        showToast(`Added ${name} x${amount}`, 'success')
+    }
+
+    function removeItem(index) {
+        items.splice(index, 1)
+        renderItems()
+    }
+
+    function clearItems() {
+        if (items.length === 0) return
+        items = []
+        renderItems()
+        showToast('List cleared', 'info')
+    }
+
+    function submitComp() {
+        if (items.length === 0) { showToast('Add at least one item first', 'error'); return }
+        fetch(`https://${resourceName}/submitComp`, {
+            method: 'POST',
+            body: JSON.stringify({ items: items })
+        })
+        items = []
+        renderItems()
+    }
+
+    function redeemCode() {
+        const input = document.getElementById('redeem-code')
+        const code = input.value.trim().toUpperCase()
+        if (code.length !== 10) { showToast('Code must be 10 characters', 'error'); return }
+        fetch(`https://${resourceName}/redeemCode`, {
+            method: 'POST',
+            body: JSON.stringify({ code: code })
+        })
+        input.value = ''
+    }
+
+    window.addEventListener('message', function(event) {
+        const data = event.data
+        if (!data || !data.type) return
+
+        switch (data.type) {
+            case 'openAdmin':
+                items = []
+                openPanel('admin')
+                break
+            case 'openRedeem':
+                openPanel('redeem')
+                break
+            case 'close':
+                if (isClosing) return
+                isClosing = true
+                document.getElementById('overlay').classList.remove('visible')
+                setTimeout(() => {
+                    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'))
+                    currentPanel = null
+                }, 200)
+                break
+            case 'notify':
+                showToast(data.message, data.style || 'info')
+                break
+            case 'submitSuccess':
+                showToast('Code generated & copied to clipboard!', 'success')
+                break
+        }
+    })
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeUI()
+
+        if (e.key === 'Enter' && currentPanel === 'admin') {
+            const focused = document.activeElement
+            if (focused.id === 'admin-item-name' || focused.id === 'admin-item-amount') {
+                addItem()
+            }
+        }
+
+        if (e.key === 'Enter' && currentPanel === 'redeem') {
+            if (document.activeElement.id === 'redeem-code') redeemCode()
+        }
+    })
+
+    let toastTimer = null
+    function showToast(message, type = 'info') {
+        const icons = { success: 'fa-check-circle', error: 'fa-exclamation-circle', info: 'fa-info-circle' }
+        const toast = document.getElementById('toast')
+        toast.className = `show ${type}`
+        toast.textContent = ''
+        const icon = document.createElement('i')
+        icon.className = `fas ${icons[type] || icons.info}`
+        toast.appendChild(icon)
+        toast.appendChild(document.createTextNode(' ' + message))
+        clearTimeout(toastTimer)
+        toastTimer = setTimeout(() => { toast.className = '' }, 2800)
+    }
+
+    function escHtml(str) {
+        return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+    }
+
+    const resourceName = 'fr_compmachine'
+</script>
+</body>
+</html>
