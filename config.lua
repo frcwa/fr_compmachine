@@ -1,4 +1,7 @@
 Config = {}
+
+-- Framework: 'qbox' or 'esx'
+Config.framework = 'qbox'
 -- self explanitory, the prop model of the machine in your server where the players can redeem their Compensation code
 Config.prop = 'prop_park_ticket_01'
 
