@@ -98,12 +98,23 @@ local function sendDiscordLog(str)
     }), { ['Content-Type'] = 'application/json' })
 end
 
-lib.addCommand('comp', {
-    help       = 'Open compensation builder UI',
-    restricted = 'group.admin',
-}, function(source)
-    TriggerClientEvent('comp_ui:openAdmin', source)
-end)
+if Config.framework == 'esx' then
+    RegisterCommand('comp', function(source)
+        local src = tonumber(source) or 0
+        if src <= 0 then return end
+        local ESX = exports['es_extended']:getSharedObject()
+        local xPlayer = ESX.GetPlayerFromId(src)
+        if not xPlayer or xPlayer.getGroup() ~= 'admin' then return end
+        TriggerClientEvent('comp_ui:openAdmin', src)
+    end, false)
+else
+    lib.addCommand('comp', {
+        help       = 'Open compensation builder UI',
+        restricted = 'group.admin',
+    }, function(source)
+        TriggerClientEvent('comp_ui:openAdmin', source)
+    end)
+end
 
 RegisterNetEvent('fr_compmachine:store_compensation', function(clientToken, items)
     local src = tonumber(source) or 0
@@ -182,11 +193,24 @@ RegisterNetEvent('redeem_compensation_code', function(code)
         local name = item.item:lower()
         local success = false
 
-        if moneyTypes[name] then
+if moneyTypes[name] then
             local moneyType = name == 'money' and 'cash' or name
-            local player = exports.qbx_core:GetPlayer(src)
-            if player then
-                success = player.Functions.AddMoney(moneyType, item.amount, 'compensation')
+            if Config.framework == 'esx' then
+                local ESX = exports['es_extended']:getSharedObject()
+                local xPlayer = ESX.GetPlayerFromId(src)
+                if xPlayer then
+                    if moneyType == 'bank' then
+                        xPlayer.addAccountMoney('bank', item.amount)
+                    else
+                        xPlayer.addMoney(item.amount)
+                    end
+                    success = true
+                end
+            else
+                local player = exports.qbx_core:GetPlayer(src)
+                if player then
+                    success = player.Functions.AddMoney(moneyType, item.amount, 'compensation')
+                end
             end
         else
             success = exports.ox_inventory:AddItem(src, item.item, item.amount)
